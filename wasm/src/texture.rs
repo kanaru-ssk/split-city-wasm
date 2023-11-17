@@ -14,7 +14,11 @@ impl Texture {
         bytes: &[u8],
         label: &str,
     ) -> Result<Self> {
-        let img = image::load_from_memory(bytes)?;
+        let img = image::load_from_memory(bytes)?.resize_exact(
+            2048,
+            1536,
+            image::imageops::FilterType::Triangle,
+        );
         Self::from_image(device, queue, &img, Some(label))
     }
 
