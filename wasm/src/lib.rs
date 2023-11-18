@@ -1,4 +1,8 @@
+use include_dir::{include_dir, Dir};
 use std::iter;
+
+static IMAGES_DIR: &str = "loadImg_sendai";
+static PROJECT_DIR: Dir<'_> = include_dir!("src");
 
 use wgpu::util::DeviceExt;
 use winit::{
@@ -126,6 +130,16 @@ impl State {
             view_formats: vec![],
         };
         surface.configure(&device, &config);
+
+        let bytes: Vec<_> = PROJECT_DIR
+            .get_dir(IMAGES_DIR)
+            .expect("dir not found")
+            .files()
+            .map(|file| file.contents())
+            .collect();
+        let diffuse_textures = bytes
+            .iter()
+            .map(|byte| texture::Texture::from_bytes(&device, &queue, byte, "image").unwrap());
 
         let diffuse_bytes = include_bytes!("loadImg_sendai/0.jpg");
         let diffuse_texture =
