@@ -101,7 +101,7 @@ impl State {
             .request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
-                    features: wgpu::Features::empty(),
+                    features: wgpu::Features::TEXTURE_BINDING_ARRAY,
                     limits: if cfg!(target_arch = "wasm32") {
                         wgpu::Limits::downlevel_webgl2_defaults()
                     } else {
@@ -137,13 +137,19 @@ impl State {
             .files()
             .map(|file| file.contents())
             .collect();
-        let diffuse_textures = bytes
+        let diffuse_textures: Vec<_> = bytes
             .iter()
-            .map(|byte| texture::Texture::from_bytes(&device, &queue, byte, "image").unwrap());
+            .map(|byte| texture::Texture::from_bytes(&device, &queue, byte, "image").unwrap())
+            .collect();
 
-        let diffuse_bytes = include_bytes!("loadImg_sendai/0.jpg");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "0.jpg").unwrap();
+        let diffuse_texture_views: &Vec<&_> = &diffuse_textures
+            .iter()
+            .map(|texture| &texture.view)
+            .collect();
+        let diffuse_texture_samplers: &Vec<_> = &diffuse_textures
+            .iter()
+            .map(|texture| &texture.sampler)
+            .collect();
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -156,13 +162,13 @@ impl State {
                             view_dimension: wgpu::TextureViewDimension::D2,
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
-                        count: None,
+                        count: std::num::NonZeroU32::new(10),
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
                         visibility: wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                        count: None,
+                        count: std::num::NonZeroU32::new(10),
                     },
                 ],
                 label: Some("texture_bind_group_layout"),
@@ -173,11 +179,11 @@ impl State {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                    resource: wgpu::BindingResource::TextureViewArray(diffuse_texture_views),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                    resource: wgpu::BindingResource::SamplerArray(diffuse_texture_samplers),
                 },
             ],
             label: Some("diffuse_bind_group"),
